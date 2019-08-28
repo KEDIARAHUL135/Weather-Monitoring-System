@@ -1,0 +1,68 @@
+/****************************************
+ * Include Libraries
+ ****************************************/
+#include "UbidotsESPMQTT.h"
+#include "DHT.h"
+
+/****************************************
+ * Define Constants
+ ****************************************/
+#define DHTPIN D6                                               // Digital pin connected to the DHT sensor
+#define DHTTYPE DHT11                                           // DHT 11
+
+#define TOKEN "A1E-aKwGIkhRNx9Oq5Fbv0QYXuVHeRV16s"              // Your Ubidots TOKEN
+#define WIFINAME "Kedia"                                        //Your SSID
+#define WIFIPASS "kediaRahuLl"                                  // Your Wifi Pass
+
+Ubidots client(TOKEN);
+DHT dht(DHTPIN, DHTTYPE);
+
+/****************************************
+ * Auxiliar Functions
+ ****************************************/
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i=0;i<length;i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
+
+/****************************************
+ * Main Functions
+ ****************************************/
+
+void setup() 
+{
+  Serial.begin(9600);
+  client.setDebug(true);                        // Pass a true or false bool value to activate debug messages
+  client.wifiConnection(WIFINAME, WIFIPASS);
+  client.begin(callback);
+  dht.begin();
+}
+
+void loop() 
+{
+  if(!client.connected())
+  {
+      client.reconnect();
+  }
+  
+  float h = dht.readHumidity();                 //Read Humidity
+  float t = dht.readTemperature();              //Read Temperature
+  
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(h) || isnan(t) ) 
+  {
+    Serial.println(F("Failed to read from DHT sensor!"));
+    return;
+  }
+  
+  client.add("humidity", h);                    //Add variable value
+  client.add("temperature", t);                 //Add variable value
+  client.ubidotsPublish("DHT11");               //Publish
+  client.loop();
+}
